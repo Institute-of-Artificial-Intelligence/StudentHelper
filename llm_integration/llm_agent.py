@@ -5,12 +5,16 @@ from yandex_cloud_ml_sdk import YCloudML
 from langchain_community.chat_models import ChatPerplexity
 from llm_decider import llm_decider
 from llm_memory import load_chat_history, update_chat_history
+from qdrant_manager import QdrantManager
 
 
 load_dotenv()
 perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
 yandex_folder_id = os.getenv("YANDEX_FOLDER_ID")
 yandex_api_key = os.getenv("YANDEX_API_KEY")
+
+qdrant = QdrantManager()
+universities = [uni["name"] for uni in read_websites("u.json")]
 
 # Инициализация Sonar из Perplexity
 sonar_model = ChatPerplexity(
@@ -45,6 +49,14 @@ def format_response(response):
 
     return f"{text.strip()}{links_text}"
 
+
+def extract_university(question):
+    question_lower = question.lower()
+    for uni in universities:
+        if uni.lower() in question_lower:
+            return uni
+    return None
+
 # LLM агент
 def llm_agent(question, history):
     category = llm_decider(question)
@@ -77,6 +89,16 @@ def llm_agent(question, history):
         response = sonar_model.invoke(messages)
         reply = format_response(response)
         return reply
+    
+    elif category == "Легальный, связан с получением информации про получение образования":
+        university = extract_university(question)
+        context = "\n".join(qdrant.search(question, university))
+    
+        system_msg = f"""Отвечай на русском. Используй контекст:
+        {context}
+        Если информация отсутствует в контексте, используй свои знания."""
+    
+        messages = [{"role": "system", "content": system_msg}]
 
     else:
         reply = "Не удалось определить категорию запроса."

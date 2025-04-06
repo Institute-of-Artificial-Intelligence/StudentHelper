@@ -1,0 +1,11 @@
+qdrant-client
+langchain
+sentence-transformers
+PyPDF2
+python-dotenv
+flask
+flask-cors
+requests
+beautifulsoup4
+yandex_cloud_ml_sdk
+langchain_community

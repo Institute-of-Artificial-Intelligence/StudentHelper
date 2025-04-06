@@ -7,6 +7,9 @@ from time import sleep
 from links_extractor import get_all_website_links
 from pdf_downloader import download
 
+from ..llm_integration.qdrant_manager import QdrantManager
+from ..llm_integration.pdf_processor import process_university_docs
+
 FILENAME = 'u.json'
 DEBUG = False
 THREADS_EXTRACTOR = 6
@@ -116,8 +119,19 @@ def handle_url(name: str, web_page: str) -> None:
     return pdfs_set
 
 
+def main():
+    qdrant = QdrantManager()
+    universities = read_websites(FILENAME)
+    
+    for uni in universities:
+        if qdrant.university_exists(uni['name']):
+            print(f"Skipping {uni['name']}, already exists")
+            continue
+            
+        for url in uni['web_pages']:
+            handle_url(uni['name'], url)
+        
+        process_university_docs(uni['name'], qdrant)
+
 if __name__ == '__main__':
-    objects = read_websites(FILENAME)
-    for obj in objects:
-        for url in obj['web_pages']:
-            print(f'===== {obj['name']} =====', *handle_url(obj['name'], url), sep='\n')
+    main()
