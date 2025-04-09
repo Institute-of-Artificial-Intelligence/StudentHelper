@@ -5,6 +5,7 @@ from yandex_cloud_ml_sdk import YCloudML
 from langchain_community.chat_models import ChatPerplexity
 
 from links import filter_links, download_web_or_pdf
+#from qdrant_processor import QdrantProcessor
 
 # Загрузка значений из .env
 load_dotenv()
@@ -83,7 +84,6 @@ def update_universitites(name: str):
                     'Дай ответ одним словом "true" или "false".',
     }]
     answer = llama_model.invoke(messages)
-    print(format_response(answer))
 
     if format_response(answer).find('false') != -1:
         messages = [{
@@ -112,6 +112,13 @@ def update_universitites(name: str):
 
         os.makedirs(name, exist_ok=True)
         download_web_or_pdf(links, name)
+
+        '''
+        qdrant = QdrantProcessor()
+        for title, link in links.items():
+            qdrant.upload_document(f'{name}/{title}.pdf')
+        '''
+        
         
         
 if __name__ == '__main__':
