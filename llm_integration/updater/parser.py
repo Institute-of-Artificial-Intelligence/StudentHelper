@@ -81,7 +81,7 @@ def write_to_pdf(string_array: list, filename: str) -> None:
 
     for text in string_array:
         # Разбиваем строку, если она слишком длинная
-        lines = split_string_by_width(cnv, text.replace('\n', ''), max_width, font_name, font_size)
+        lines = split_string_by_width(cnv, text, max_width, font_name, font_size)
         
         for line in lines:
             if y < margin:  # Если кончилось место, новая страница
@@ -100,7 +100,6 @@ def parse_to_pdf(url: str, name: str) -> str:
 
     text = get_text_from_url(url).replace('—', '-') \
             .encode('cp1251', errors='ignore').decode('cp1251', errors='ignore')
-    print(text)
     write_to_pdf(text.split('\n'), name)
 
 

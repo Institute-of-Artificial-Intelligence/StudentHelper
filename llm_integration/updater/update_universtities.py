@@ -1,11 +1,10 @@
-# Берем из базы данных университеты и если запрос пользователя говорит о каком-то новом университете, которого нет в БД, то parser используем
 import os
 import re
 from dotenv import load_dotenv
 from yandex_cloud_ml_sdk import YCloudML
 from langchain_community.chat_models import ChatPerplexity
 
-from parser import parse_to_pdf
+from links import filter_links, download_web_or_pdf
 
 # Загрузка значений из .env
 load_dotenv()
@@ -53,32 +52,25 @@ def get_universities() -> list:
     return ['ИТМО', 'СПбГМТУ']
 
 
-def extract_links_from_response(response) -> set:
-    '''Извлекает все ссылки из ответа, данного нейросетью'''
+def handle_response_with_links(response) -> dict:
+    '''Извлекает все ссылки с названиями из ответа, данного нейросетью'''
 
-    text = response.content if hasattr(response, 'content') else ''
-    links = response.additional_kwargs.get('citations') if hasattr(response, 'additional_kwargs') else None
-    links = set(links) if links != None else set()
+    links = set(response.additional_kwargs.get('citations')) if hasattr(response, 'additional_kwargs') else set()
+    if not hasattr(response, 'content'):
+        return {'other': links}
+    text = response.content
 
-    url_pattern = re.compile(
-        r'(?:(?:https?|ftp|file)://|www\.|ftp\.)'  # протокол или www/ftp
-        r'(?:\([-A-Z0-9+&@#/%=~_|$?!:,.]*\)|[-A-Z0-9+&@#/%=~_|$?!:,.])*'  # символы в скобках
-        r'(?:\([-A-Z0-9+&@#/%=~_|$?!:,.]*\)|[A-Z0-9+&@#/%=~_|$])',  # закр. символы
-        re.IGNORECASE
-    )
-    links.update(set(url_pattern.findall(text)))
+    ans = {}
+    in_text = set()
+    text.replace('\n', '')
+    for line in text.split('|'):
+        if ':' in line:
+            name, link = line.split(':', 1)
+            ans[name.strip()] = link.strip()
+            in_text.add(link.strip())
 
-    return links
-
-
-def delete_pdf_from_links(links: set) -> set:
-    '''Удаляет ссылки на pdf-документы из множества ссылок'''
-
-    keys = list(links)
-    for link in keys:
-        if link.rsplit('.', 1)[-1] == 'pdf':
-            links.remove(link)
-    return links
+    ans['other'] = links - in_text
+    return ans
 
 
 def update_universitites(name: str):
@@ -97,28 +89,30 @@ def update_universitites(name: str):
         messages = [{
             'role': 'user',
             'content': f'Выдай важную актуальную для поступающего абитуриента информацию об университете "{name}" '
-                        'со ссылками. Важна информация о сроках подачи документов, проходных баллах и конкурсе, '
-                        'условиях поступления, специфике ВУЗа, дополнительных возможностях (общежитие, военная '
-                        'кафедра, стипендия, активности). Не используй для поиска социальные сети (vk.com, t.me), '
-                        'в основном ориентируйся на официальный сайт университета'
+                        'со ссылками. Выдай ответ строго в следующем формате, где указано url, вставляй только ссылку, без текста:\n'
+                        'Сроки подачи документов: url | Проходные баллы: url | '
+                        'Конкурс: url | Условия поступления: url | Военная кафедра: url | '
+                        'Общежитие: url | Стипендия: url | Активности: url | \n'
+                        'продолжи перечислять другие полезные ссылки в таком же формате | название: url |.'
         }]
         response = sonar_model.invoke(
             messages,
             temperature=0.1,
             top_p=0.2,
             web_search_options={
-                'search_context_size': 'high'
-            }
+                'search_context_size': 'high',
+            },
         )
-        links = extract_links_from_response(response)
-        print(*links, sep='\n')
-        links = delete_pdf_from_links(links)
+        
+        links = handle_response_with_links(response)
+        other = links.pop('other')
+        links = filter_links(links, ['youtube.com', 'vk.com', 'dzen.ru', 't.me'])
+        block = links.pop('block')
+        print(links, other, block, sep='\n')
 
         os.makedirs(name, exist_ok=True)
-        for link in links:
-            parse_to_pdf(link, f'{name}/{re.sub(r'[/|\\:?*"<>]', '_', link)}.pdf')
+        download_web_or_pdf(links, name)
         
-
-
+        
 if __name__ == '__main__':
     update_universitites('ЛЭТИ')
