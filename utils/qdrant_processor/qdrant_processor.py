@@ -13,7 +13,7 @@ from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue
 load_dotenv()
 
 class QdrantProcessor:
-    def __init__(self, collection_name="documents", vector_size=256):
+    def __init__(self, collection_name="university_docs", vector_size=256):
         # Инициализация клиента Qdrant с URL и API-ключом из окружения
         self.qdrant = QdrantClient(
             url=os.getenv("QDRANT_URL"),
@@ -112,7 +112,7 @@ class QdrantProcessor:
         else:
             print("Нет новых данных для загрузки.")
 
-    def search(self, query: str, university: str = None, limit: int = 5):
+    def search(self, query: str, university: str = None, limit: int = 1):
         """Выполняет поиск по эмбеддингу запроса, опционально фильтруя по вузу."""
         vector = self.embeddings.embed_documents([query])[0]
 
@@ -131,8 +131,9 @@ class QdrantProcessor:
         )
 
         # Печать результатов
-        print(f"\nТоп-{limit} результатов по запросу: '{query}'\n")
-        for i, point in enumerate(result, 1):
-            text = point.payload.get("text", "")[:300]  # Ограничиваем длину текста
-            uni = point.payload.get("university", "")
-            print(f"{i}. [{uni}] {text}...\n")
+        print(result)
+
+
+if __name__ == '__main__':
+    qdrant_db = QdrantProcessor()
+    qdrant_db.search("экология и природопользование")
