@@ -5,6 +5,7 @@ from yandex_cloud_ml_sdk import YCloudML
 from langchain_community.chat_models import ChatPerplexity
 
 from .links import filter_links, download_web_or_pdf
+from ..database import universities_manager
 from ..qdrant_processor.qdrant_processor import QdrantProcessor
 
 # Загрузка значений из .env
@@ -30,6 +31,9 @@ llama_model = sdk.models.completions("llama").configure(
     max_tokens=2000,
 ).langchain(model_type="chat")
 
+# Создание таблицы в БД
+universities_manager.create_universitites_table()
+
 
 def format_response(response):
     '''Форматирование ответа от нейросети'''
@@ -44,13 +48,6 @@ def format_response(response):
         links_text = ""
 
     return f"{text.strip()}{links_text}"
-
-
-def get_universities() -> list:
-    '''Получение списка университетов'''
-
-    # Хардкод
-    return ['ИТМО', 'СПбГМТУ']
 
 
 def handle_response_with_links(response) -> dict:
@@ -77,7 +74,7 @@ def handle_response_with_links(response) -> dict:
 def update_universitites(name: str):
     '''Добавляет данные об университете при отсутствии сведений о нём в хранилище'''
 
-    universities = get_universities()
+    universities = universities_manager.get_universities()
     messages = [{
         'role': 'user',
         'content': f'Проверь, есть ли в списке университетов {universities} следующий университет: {name}. '
@@ -130,6 +127,7 @@ def update_universitites(name: str):
         download_web_or_pdf(links, name)
 
         qdrant = QdrantProcessor()
+        universities_manager.insert_links(name, links)
         for title, link in links.items():
             qdrant.upload_document(f'{name}/{title}.pdf')
             os.remove(f'{name}/{title}.pdf')
@@ -137,4 +135,4 @@ def update_universitites(name: str):
         
         
 if __name__ == '__main__':
-    update_universitites('Санкт-Петербургский государственный университет телекоммуникаций им. проф. М. А. Бонч-Бруевича')
+    update_universitites('Санкт-Петербургский государственный университет им. В.И. Ленина (Ульянова)')
