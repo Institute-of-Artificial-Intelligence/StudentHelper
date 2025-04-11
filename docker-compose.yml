@@ -1,0 +1,33 @@
+services:
+  frontend:
+    build: ./frontend
+    container_name: studenthelper-frontend
+    env_file: .env
+    environment:
+      - NODE_ENV=${NODE_ENV}
+    networks:
+      - webnet
+
+  backend:
+    build: ./llm_integration
+    container_name: studenthelper-backend
+    env_file: .env
+    networks:
+      - webnet
+
+  reverse-proxy:
+    image: nginx:alpine
+    container_name: studenthelper-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - webnet
+
+networks:
+  webnet:
+    driver: bridge
