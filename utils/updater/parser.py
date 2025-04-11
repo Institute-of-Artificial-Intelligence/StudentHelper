@@ -131,7 +131,7 @@ def write_to_pdf(string_array: list, filename: str) -> None:
 
     # Загрузка шрифта, поддерживающего кириллицу
     try:
-        pdfmetrics.registerFont(TTFont('Arial', './font/arial.ttf'))
+        pdfmetrics.registerFont(TTFont('Arial', './assets/arial.ttf'))
         font_name = 'Arial'
     except:
         font_name = 'Times-Roman'
