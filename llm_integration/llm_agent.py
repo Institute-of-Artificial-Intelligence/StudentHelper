@@ -14,7 +14,7 @@ yandex_api_key = os.getenv("YANDEX_API_KEY")
 
 # Инициализация Sonar из Perplexity
 sonar_model = ChatPerplexity(
-    model="llama-3.1-sonar-small-128k-online",
+    model="sonar-reasoning",
     temperature=0.5,
     api_key=perplexity_api_key
 )
@@ -35,22 +35,29 @@ def format_response(response):
     text = response.content if hasattr(response, "content") else str(response)
     text = text.replace("###", "")
     text = re.sub(r'\[\d+\]', '', text)
-    citations = response.additional_kwargs.get("citations", [])
-    
-
-    if citations:
-        links_text = "\n\n Полезные ссылки:\n" + "\n".join(f"- {url}" for url in citations)
-    else:
-        links_text = ""
-
-    return f"{text.strip()}{links_text}"
+    return f"{text.strip()}"
 
 # LLM агент
 def llm_agent(question, history):
     category = llm_decider(question)
 
-    messages = [{"role": "system", "content": "Общайся с пользователем на русском языке в шутливой форме. Ты бот, помогающий студентам выбрать высшие учебные заведения Российской Федерации города Санкт-Петербурга."
-    "Давай только актуальные ссылки. Старайся не повторяться."}]
+    ### грамотно реализовать память чата
+    ### альтернативный вариант: переодически через LLM (имеется ввиду Llama) прогонять историю и сокращать ее - нужен хороший промпт
+    ### хороший вариант - supabase, возможно можно ее бесплатно в докере развернуть
+
+    ### например первый запрос: ЛЭТИ - ответ выдал
+    ### второй: ИТМО - ответ выдал
+    ### третий: сравни их - не понял и применился третий if (или 2 elif еще) - решить это
+    messages = [{"role": "system",
+                 "content":
+                 '''Общайся с пользователем на русском языке в шутливой форме.
+                    Ты — ассистент, специализирующийся на поиске и структурировании актуальной информации для абитуриентов, поступающих в высшие учебные заведения Российской Федерации.
+                    Твоя задача — найти и выдать полезную информацию для поступления в ВУЗ. Также ты можешь просто общаться с пользователем.
+                    Формат: Текст, содержащий в себе информацию для ответа абитуриенту. Текст всегда должен содержать внутри себя ссылки на информацию.
+                    Суть: Выдавай самую актуальную и точную информацию на запрос пользователя на текущий год. Обязательно ищи релевантные источники информации и строго всегда выдавай их в формате "Ссылки: url"
+                    Стиль: Неформальный, но без нецензурной лексики, с вводными словами и пояснениями.
+                    Полнота: Стремись собрать максимально полную и полезную подборку информации и ссылок, релевантную абитуриенту.
+                '''}]
     for entry in history:
         messages.append({"role": "user", "content": entry["user"]})
         messages.append({"role": "assistant", "content": entry["bot"]})
@@ -66,15 +73,21 @@ def llm_agent(question, history):
         return reply
 
     elif category == "Легальный, не связан с образованием, требует поиска в интернете":
-        intermediate_answer = sonar_model.invoke(messages)
-        prompt = f"Вот ответ от модели, полученный после интернет-поиска:\n\n{intermediate_answer}\n\nПереформулируй это как обычный текст без ссылок и упоминаний об источниках."
-        messages.append({"role": "user", "content": prompt})
-        response = llama_model.invoke(messages)
-        reply = format_response(response)
+        reply = "Извини, друг, но мне кажется этот вопрос не связан с твоим поступлением в высшие учебные заведения."
         return reply
 
     elif category == "Легальный, связан с получением информации про получение образования":
-        response = sonar_model.invoke(messages)
+        ### добавить логику обработки есть ли у нас такой вуз в базе данных
+        ### если вуза нет, то подключаем модуль парсинга по вузу
+        ### следующий шаг (или если вуз уже есть), то берем контекст оттуда вставляем его в промпт (надо поменять промпт)
+
+        ### если вуза два или более, то просто запускаем модель
+        response = sonar_model.invoke(
+            messages,
+            web_search_options={
+                'search_context_size': 'high',
+            }
+        )
         reply = format_response(response)
         return reply
 
