@@ -8,6 +8,7 @@ WORKDIR /app
 # Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir gunicorn
 
 # Copy application code
 COPY . .
@@ -16,7 +17,7 @@ COPY . .
 USER studenthelper
 
 # Expose the port your app uses
-EXPOSE 8000
+EXPOSE 8888
 
 # Default command (adjust if using Flask)
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8888", "server:app"]

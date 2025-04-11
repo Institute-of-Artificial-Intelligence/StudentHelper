@@ -2,6 +2,8 @@ services:
   frontend:
     build: ./frontend
     container_name: studenthelper-frontend
+    ports:
+      - "3000:3000"
     env_file: .env
     environment:
       - NODE_ENV=${NODE_ENV}
@@ -11,6 +13,8 @@ services:
   backend:
     build: ./llm_integration
     container_name: studenthelper-backend
+    ports:
+      - "8888:8888"
     env_file: .env
     networks:
       - webnet
