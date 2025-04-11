@@ -12,15 +12,82 @@ headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
 
+def replace_table_to_dict(soup: BeautifulSoup) -> None:
+    '''В структуре soup преобразовывает все таблицы в словари'''
+
+    tables = soup.find_all('table')
+    
+    for table in tables:
+        table_dict = {'head': {}, 'body': {}, 'foot': {}}
+        
+        # Обработка thead (заголовки)
+        thead = table.find('thead')
+        if thead:
+            for row_idx, row in enumerate(thead.find_all('tr'), start=1):
+                row_dict = {}
+                for col_idx, cell in enumerate(row.find_all(['th', 'td']), start=1):
+                    row_dict[f'col{col_idx}'] = cell.get_text(strip=True)
+                table_dict['head'][f'row{row_idx}'] = row_dict
+        
+        # Обработка tbody (основное содержимое)
+        tbody = table.find('tbody') or table  # Если tbody нет, берём всю таблицу
+        rows_in_body = tbody.find_all('tr') if tbody != table else table.find_all('tr')
+        
+        # Исключение строк, которые уже попали в thead или tfoot
+        if thead:
+            rows_in_body = [row for row in rows_in_body if row not in thead.find_all('tr')]
+        tfoot = table.find('tfoot')
+        if tfoot:
+            rows_in_body = [row for row in rows_in_body if row not in tfoot.find_all('tr')]
+        
+        for row_idx, row in enumerate(rows_in_body, start=1):
+            row_dict = {}
+            for col_idx, cell in enumerate(row.find_all(['th', 'td']), start=1):
+                row_dict[f'col{col_idx}'] = cell.get_text(strip=True)
+            table_dict['body'][f'row{row_idx}'] = row_dict
+        
+        # Обработка tfoot (подвал таблицы)
+        tfoot = table.find('tfoot')
+        if tfoot:
+            for row_idx, row in enumerate(tfoot.find_all('tr'), start=1):
+                row_dict = {}
+                for col_idx, cell in enumerate(row.find_all(['th', 'td']), start=1):
+                    row_dict[f'col{col_idx}'] = cell.get_text(strip=True)
+                table_dict['foot'][f'row{row_idx}'] = row_dict
+        
+        # Замена таблицы на словарь
+        table.replace_with(f"{table_dict}")
+
+
 def get_text_from_url(url: str) -> str:
-    '''Получение текста со страницы по ссылке'''
+    '''Парсинг html-страницы по ссылке'''
 
     r = requests.get(url, headers=headers)
     soup = BeautifulSoup(r.text, 'html.parser')
 
-    # Удаляем все ссылки
-    for a_tag in soup.find_all('a'):
-        a_tag.decompose()
+    # Удаление всех ссылок
+    '''for a_tag in soup.find_all('a'):
+        a_tag.decompose()'''
+    # Удаление со странице всех тегов заголовка и навигации
+    for header in soup.find_all(['header', 'nav', 'footer']):
+        header.decompose()
+    # Удаление со страницы div тега с id='header' или с class='header'
+    header_div = soup.find('div', {'id': 'header'})
+    if header_div:
+        header_div.decompose()
+    header_div = soup.find('div', {'class': 'header'})
+    if header_div:
+        header_div.decompose()
+    # Удаление со страницы div тега с id='footer' или с class='footer'
+    header_div = soup.find('div', {'id': 'footer'})
+    if header_div:
+        header_div.decompose()
+    header_div = soup.find('div', {'class': 'footer'})
+    if header_div:
+        header_div.decompose()
+    
+    # замена таблиц на словари
+    replace_table_to_dict(soup)
 
     return soup.get_text("\n", True)
 
@@ -98,10 +165,10 @@ def write_to_pdf(string_array: list, filename: str) -> None:
 def parse_to_pdf(url: str, name: str) -> str:
     '''Парсинг веб-страницы в pdf файл'''
 
-    text = get_text_from_url(url).replace('—', '-') \
+    text = get_text_from_url(url).replace('—', '-').replace('–', '-') \
             .encode('cp1251', errors='ignore').decode('cp1251', errors='ignore')
     write_to_pdf(text.split('\n'), name)
 
 
 if __name__ == '__main__':
-    parse_to_pdf('https://t.me/s/vleti?before=215', 'etu.pdf')
+    parse_to_pdf('https://priem.sut.ru/bak/statistika-prokhodnykh-ballov', 'test.pdf')
