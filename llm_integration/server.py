@@ -1,13 +1,15 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from llm_agent import llm_agent, load_chat_history, update_chat_history
 
 app = Flask(__name__)
 CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 chat_history = load_chat_history()
 
 @app.route("/send_message", methods=["POST"])
+@cross_origin()
 def send_message():
     data = request.json
     user_message = data.get("message")
@@ -26,4 +28,4 @@ def send_message():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=8888)

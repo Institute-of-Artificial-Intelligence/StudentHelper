@@ -6,7 +6,7 @@ export interface QuickReplyOption {
 export const sendMessageToBackend = async (message: string): Promise<string> => {
   try {
     // Отправляем запрос на ваш сервер Flask с сообщением пользователя
-    const response = await fetch('http://localhost:5000/send_message', {
+    const response = await fetch('http://localhost:8888/send_message', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

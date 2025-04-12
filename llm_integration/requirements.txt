@@ -1,0 +1,8 @@
+flask
+flask-cors
+python-dotenv
+yandex-cloud-ml-sdk
+langchain-community
+requests
+gunicorn
+openai
