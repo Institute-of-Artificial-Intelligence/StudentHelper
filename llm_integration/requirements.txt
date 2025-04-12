@@ -5,5 +5,4 @@ yandex-cloud-ml-sdk
 langchain-community
 requests
 gunicorn
-uvicorn
 openai
