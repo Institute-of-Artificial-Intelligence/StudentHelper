@@ -2,6 +2,8 @@ from supabase import create_client
 from dotenv import load_dotenv
 import os
 
+TABLE_NAME = 'chat_history'
+
 load_dotenv()
 url = os.getenv('SUPABASE_URL')
 key = os.getenv('SUPABASE_KEY')
@@ -12,7 +14,7 @@ supabase = create_client(url, key)
 def get_messages() -> list:
     try:
         command = (
-            supabase.table('chat_history')
+            supabase.table(TABLE_NAME)
             .select('author', 'text', 'created_at')
         )
         response = command.execute()
@@ -25,7 +27,7 @@ def get_messages() -> list:
 def add_message(author: str, text: str) -> bool:
     try:
         response = (
-            supabase.table("chat_history")
+            supabase.table(TABLE_NAME)
             .insert({'author': author, 'text': text})
             .execute()
         )

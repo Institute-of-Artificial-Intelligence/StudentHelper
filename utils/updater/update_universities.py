@@ -72,66 +72,58 @@ def handle_response_with_links(response) -> dict:
 
 
 def update_universitites(name: str):
-    '''Добавляет данные об университете при отсутствии сведений о нём в хранилище'''
+    '''Добавляет данные об университете  в хранилище'''
 
-    universities = universities_manager.get_universities()
     messages = [{
         'role': 'user',
-        'content': f'Проверь, есть ли в списке университетов {universities} следующий университет: {name}. '
-                    'Дай ответ одним словом "true" или "false".',
+        'content': f'''
+        Ты — ассистент, специализирующийся на поиске и структурировании актуальной информации для абитуриентов. Твоя задача — найти и выдать полезные ссылки по поступлению в университет "{name}", строго в указанном формате.
+        Требования к результату:
+        Суть: Найди и выдай ссылки, содержащие важную и актуальную информацию, необходимую поступающему: правила приема, сроки подачи документов, проходные баллы, конкурс, условия поступления и пр.
+        Формат: Ответ должен быть представлен строго в следующем формате:
+        Правила приема: url
+        Сроки подачи документов: url
+        Проходные баллы: url
+        Конкурс: url
+        Условия поступления: url
+        Военная кафедра: url
+        Общежитие: url
+        Стипендия: url
+        Активности: url
+        Другая полезная ссылка: url
+        — Важно: Вставляй только ссылки, без описаний и пояснений.
+        — Продолжай перечисление другими релевантными пунктами в том же стиле.
+        Стиль: Информационный, нейтральный, без вводных слов и пояснений.
+        Полнота: Стремись собрать максимально полную и полезную подборку ссылок, релевантную поступающему.
+        Входные данные: Название университета — "{name}".
+        Ожидаемый результат: Список ссылок в требуемом формате, без заголовков или пояснений.'''
     }]
-    answer = llama_model.invoke(messages)
+    response = sonar_model.invoke(
+        messages,
+        temperature=0.1,
+        top_p=0.2,
+        extra_body={"search_domain_filter": ["sut.ru"]},
+        web_search_options={
+            'search_context_size': 'high',
+        },
+    )
+    
+    links = handle_response_with_links(response)
+    other = links.pop('other')
+    links = filter_links(links, ['youtube.com', 'vk.com', 'dzen.ru', 't.me'])
+    block = links.pop('block')
+    #print(links, other, block, sep='\n')
 
-    if format_response(answer).find('false') != -1:
-        messages = [{
-            'role': 'user',
-            'content': f'''
-            Ты — ассистент, специализирующийся на поиске и структурировании актуальной информации для абитуриентов. Твоя задача — найти и выдать полезные ссылки по поступлению в университет "{name}", строго в указанном формате.
-            Требования к результату:
-            Суть: Найди и выдай ссылки, содержащие важную и актуальную информацию, необходимую поступающему: правила приема, сроки подачи документов, проходные баллы, конкурс, условия поступления и пр.
-            Формат: Ответ должен быть представлен строго в следующем формате:
-            Правила приема: url
-            Сроки подачи документов: url
-            Проходные баллы: url
-            Конкурс: url
-            Условия поступления: url
-            Военная кафедра: url
-            Общежитие: url
-            Стипендия: url
-            Активности: url
-            Другая полезная ссылка: url
-            — Важно: Вставляй только ссылки, без описаний и пояснений.
-            — Продолжай перечисление другими релевантными пунктами в том же стиле.
-            Стиль: Информационный, нейтральный, без вводных слов и пояснений.
-            Полнота: Стремись собрать максимально полную и полезную подборку ссылок, релевантную поступающему.
-            Входные данные: Название университета — "{name}".
-            Ожидаемый результат: Список ссылок в требуемом формате, без заголовков или пояснений.'''
-        }]
-        response = sonar_model.invoke(
-            messages,
-            temperature=0.1,
-            top_p=0.2,
-            extra_body={"search_domain_filter": ["sut.ru"]},
-            web_search_options={
-                'search_context_size': 'high',
-            },
-        )
-        
-        links = handle_response_with_links(response)
-        other = links.pop('other')
-        links = filter_links(links, ['youtube.com', 'vk.com', 'dzen.ru', 't.me'])
-        block = links.pop('block')
-        print(links, other, block, sep='\n')
+    os.makedirs(name, exist_ok=True)
+    bad_links = download_web_or_pdf(links, name)
 
-        os.makedirs(name, exist_ok=True)
-        download_web_or_pdf(links, name)
-
-        qdrant = QdrantProcessor()
-        universities_manager.insert_links(name, links)
-        for title, link in links.items():
+    qdrant = QdrantProcessor()
+    universities_manager.insert_links(name, links)
+    for title, link in links.items():
+        if link not in bad_links:
             qdrant.upload_document(f'{name}/{title}.pdf')
             os.remove(f'{name}/{title}.pdf')
-        os.rmdir(name)
+    os.rmdir(name)
         
         
 if __name__ == '__main__':

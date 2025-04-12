@@ -36,7 +36,7 @@ def filter_links(links_dict: dict, block_domens: list) -> dict:
     return ans
 
 
-def download_pdf(url: str, name: str, dir: str) -> None:
+def download_pdf(url: str, name: str, dir: str) -> bool:
     '''Скачивает pdf в директорию'''
 
     try:
@@ -44,18 +44,26 @@ def download_pdf(url: str, name: str, dir: str) -> None:
             url=url,
             filename=f'./{dir}/{name}.pdf'
         )
+        return True
     except Exception:
         print('Не удалось скачать', url)
+    finally:
+        return False
 
 
-def download_web_or_pdf(links: dict, dir: str) -> None:
+def download_web_or_pdf(links: dict, dir: str) -> set:
     '''
     Обходит словарь со ссылками: {название: ссылка}.
     Если ссылка указывает на pdf, то скачивает этот файл, иначе парсит web-страницу в pdf.
+    Возвращает множество со ссылками, которые не удалось скачать
     '''
 
+    bad_links = set()
     for name, link in links.items():
         if link.rsplit('.', 1)[-1] == 'pdf':
-            download_pdf(link, name, dir)
+            res = download_pdf(link, name, dir)
+            if not res:
+                bad_links.add(link)
         else:
             parse_to_pdf(link, f'{dir}/{name}.pdf')
+    return bad_links

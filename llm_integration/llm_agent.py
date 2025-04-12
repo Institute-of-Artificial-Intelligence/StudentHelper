@@ -5,8 +5,8 @@ from yandex_cloud_ml_sdk import YCloudML
 from langchain_community.chat_models import ChatPerplexity
 
 from llm_integration.llm_decider import llm_decider
-from llm_integration.llm_memory import load_chat_history, update_chat_history
-from utils.database import chat_manager
+from utils.database import chat_manager, universities_manager
+from utils.updater import update_universities
 
 
 load_dotenv()
@@ -58,6 +58,25 @@ def create_chat_history(history):
     for entry in history:
         messages.append({"role": entry["author"], "content": entry["text"]})
 
+# Определение университетов, упоминаемых в запросе
+def determine_universities(history: list, question: str) -> list:
+    messages = history + [{
+        'role': 'user',
+        'content': 
+        f'''Тебе требуется определить полное название всех университетов, упоминаемых в запросе.
+        Суть: определи все университеты находящиеся в запросе.
+        Формат: ответ должен быть в виде списка университетов, упоминаемых в запросе. Каждое название университета должно быть с новой строки. Если запрос не затрагивает никаких университетов, то нужно вывести всего одну строку "Нет университетов".
+        - Важно: ответ должен содержать только список университетов или строку "Нет университетов".
+        Полнота: стремись определить полные названия университетов, которые используются официально.
+        Входные данные: Запрос - "{question}"
+        Ожидаемый результат: список университетов в требуемом формате, без заголовков, маркировок и пояснений.
+        '''
+    }]
+    answer = format_response(llama_model.invoke(messages))
+    universities_list = []
+    if 'Нет университетов' not in answer:
+        universities_list = answer.split('\n')
+    return universities_list
 
 # LLM агент
 def llm_agent(question):
@@ -79,18 +98,40 @@ def llm_agent(question):
         reply = "Извини, друг, но мне кажется этот вопрос не связан с твоим поступлением в высшие учебные заведения."
 
     elif category == "Легальный, связан с получением информации про получение образования":
-        ### добавить логику обработки есть ли у нас такой вуз в базе данных
-        ### если вуза нет, то подключаем модуль парсинга по вузу
-        ### следующий шаг (или если вуз уже есть), то берем контекст оттуда вставляем его в промпт (надо поменять промпт)
-
-        ### если вуза два или более, то просто запускаем модель
-        response = sonar_model.invoke(
-            messages,
-            web_search_options={
-                'search_context_size': 'high',
-            }
-        )
-        reply = format_response(response)
+        # Получение списка университетов из запроса
+        short_messages_history = messages[1:-1]
+        if len(short_messages_history) > 3:
+            short_messages_history = short_messages_history[-3:]
+        universities = determine_universities(short_messages_history, question)
+        # Если упоминается всего один университет в запрсое
+        if len(universities) == 1:
+            university = universities[0]
+            universities_list = universities_manager.get_universities()
+            request = [{
+                'role': 'user',
+                'content': 
+                        f'''Проверь, есть ли в списке университетов {universities_list} следующий университет: {university}.
+                        Суть: определи, есть ли в списке университетов определённый университет с учётом различных вариантов названий.
+                        Формат: ответ должен представлять из себя одно слово: "true" или "false".
+                        Входные данные: список университетов - {universities_list}, определяемый университет - {university}.
+                        Ожидаемый результат: ответ одним словом: true - если университет есть в списке, false - если нет.''',
+            }]
+            answer = format_response(llama_model.invoke(request))
+            # В случае отсутствия университета в списке, он добавляется туда
+            if answer.find('false') != -1:
+                update_universities.update_universitites(university)
+            reply = university + ' ' + answer
+            ### следующий шаг (или если вуз уже есть), то берем контекст оттуда вставляем его в промпт (надо поменять промпт)
+        # Если вуза два или более, то запуск модели
+        else:
+            reply = reply = universities.__str__()
+            '''response = sonar_model.invoke(
+                messages,
+                web_search_options={
+                    'search_context_size': 'high',
+                }
+            )
+            reply = format_response(response)'''
 
     else:
         reply = "Не удалось определить категорию запроса."
