@@ -64,36 +64,19 @@ def llm_agent(question):
     global messages
     category = llm_decider(question)
 
-    ### грамотно реализовать память чата
-    ### альтернативный вариант: переодически через LLM (имеется ввиду Llama) прогонять историю и сокращать ее - нужен хороший промпт
-    ### хороший вариант - supabase, возможно можно ее бесплатно в докере развернуть
-
-    ### например первый запрос: ЛЭТИ - ответ выдал
-    ### второй: ИТМО - ответ выдал
-    ### третий: сравни их - не понял и применился третий if (или 2 elif еще) - решить это
-
     # Сохранение сообщения пользователя в историю чата
     chat_manager.add_message('user', question)
     messages.append({"role": "user", "content": question})
     
     if category == "Нелегальный, провокационный или связан с политикой":
         reply = "Извини, друг, но я не могу ответить тебе на этот вопрос."
-        # Сохранение ответа в историю чата
-        chat_manager.add_message('assistant', reply)
-        messages.append({'role': 'assistant', 'content': reply})
-        return reply
 
     elif category == "Легальный, не связан с образованием, не требует поиска в интернете":
         response = llama_model.invoke(messages)
         reply = format_response(response)
-        # Сохранение ответа в историю чата
-        chat_manager.add_message('assistant', reply)
-        messages.append({'role': 'assistant', 'content': reply})
-        return reply
 
     elif category == "Легальный, не связан с образованием, требует поиска в интернете":
         reply = "Извини, друг, но мне кажется этот вопрос не связан с твоим поступлением в высшие учебные заведения."
-        return reply
 
     elif category == "Легальный, связан с получением информации про получение образования":
         ### добавить логику обработки есть ли у нас такой вуз в базе данных
@@ -108,17 +91,15 @@ def llm_agent(question):
             }
         )
         reply = format_response(response)
-        # Сохранение ответа в историю чата
-        chat_manager.add_message('assistant', reply)
-        messages.append({'role': 'assistant', 'content': reply})
-        return reply
 
     else:
         reply = "Не удалось определить категорию запроса."
-        # Сохранение ответа в историю чата
-        chat_manager.add_message('assistant', reply)
-        messages.append({'role': 'assistant', 'content': reply})
-        return reply
+
+    # Сохранение ответа в историю чата
+    chat_manager.add_message('assistant', reply)
+    messages.append({'role': 'assistant', 'content': reply})
+
+    return reply
 
 # Основной цикл
 if __name__ == '__main__':
