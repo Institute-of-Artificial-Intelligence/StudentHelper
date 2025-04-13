@@ -77,7 +77,6 @@ def llm_agent(question):
     category = llm_decider(question)
 
     # Сохранение сообщения пользователя в историю чата
-    chat_manager.add_message('user', question)
     messages.append({"role": "user", "content": question})
     
     if category == "Нелегальный, провокационный или связан с политикой":
@@ -154,6 +153,8 @@ def llm_agent(question):
     else:
         reply = "Не удалось определить категорию запроса."
 
+    # Сохранение вопроса в историю чата
+    chat_manager.add_message('user', question)
     # Сохранение ответа в историю чата
     chat_manager.add_message('assistant', reply)
     messages.append({'role': 'assistant', 'content': reply})
