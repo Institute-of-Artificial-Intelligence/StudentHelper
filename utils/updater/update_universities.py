@@ -50,6 +50,33 @@ def format_response(response):
     return f"{text.strip()}{links_text}"
 
 
+def delete_folder(folder_path):
+    '''Удаление папки с файлами'''
+
+    if not os.path.exists(folder_path):
+        print(f"Папка {folder_path} не существует.")
+        return
+    for root, dirs, files in os.walk(folder_path, topdown=False):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"Ошибка при удалении файла {file_path}: {e}")
+        
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            try:
+                os.rmdir(dir_path)
+            except Exception as e:
+                print(f"Ошибка при удалении подпапки {dir_path}: {e}")
+    try:
+        os.rmdir(folder_path)
+        print(f"Папка {folder_path} успешно удалена.")
+    except Exception as e:
+        print(f"Ошибка при удалении основной папки: {e}")
+
+
 def handle_response_with_links(response) -> dict:
     '''Извлекает все ссылки с названиями из ответа, данного нейросетью'''
 
@@ -96,13 +123,13 @@ def update_universitites(name: str):
         Стиль: Информационный, нейтральный, без вводных слов и пояснений.
         Полнота: Стремись собрать максимально полную и полезную подборку ссылок, релевантную поступающему.
         Входные данные: Название университета — "{name}".
-        Ожидаемый результат: Список ссылок в требуемом формате, без заголовков или пояснений.'''
+        Ожидаемый результат: Список ссылок в требуемом формате, без заголовков, маркировок или пояснений.'''
     }]
     response = sonar_model.invoke(
         messages,
         temperature=0.1,
         top_p=0.2,
-        extra_body={"search_domain_filter": ["sut.ru"]},
+        extra_body={"search_domain_filter": []},
         web_search_options={
             'search_context_size': 'high',
         },
@@ -113,17 +140,18 @@ def update_universitites(name: str):
     links = filter_links(links, ['youtube.com', 'vk.com', 'dzen.ru', 't.me'])
     block = links.pop('block')
     #print(links, other, block, sep='\n')
+    print(links)
 
-    os.makedirs(name, exist_ok=True)
-    bad_links = download_web_or_pdf(links, name)
+    dir_name = re.sub(r'[\\/*?:"<>|]', ' ', name).strip()
+    os.makedirs(dir_name, exist_ok=True)
+    bad_links = download_web_or_pdf(links, dir_name)
 
     qdrant = QdrantProcessor()
     universities_manager.insert_links(name, links)
     for title, link in links.items():
         if link not in bad_links:
-            qdrant.upload_document(f'{name}/{title}.pdf')
-            os.remove(f'{name}/{title}.pdf')
-    os.rmdir(name)
+            qdrant.upload_document(f'{dir_name}/{title}.pdf')
+    delete_folder(dir_name)
         
         
 if __name__ == '__main__':

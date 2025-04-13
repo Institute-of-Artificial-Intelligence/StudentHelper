@@ -130,8 +130,7 @@ class QdrantProcessor:
             query_filter=Filter(must=filters) if filters else None
         )
 
-        # Печать результатов
-        print(result)
+        return result
 
 
 if __name__ == '__main__':

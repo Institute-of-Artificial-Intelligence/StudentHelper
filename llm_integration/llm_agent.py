@@ -7,6 +7,7 @@ from langchain_community.chat_models import ChatPerplexity
 from llm_integration.llm_decider import llm_decider
 from utils.database import chat_manager, universities_manager
 from utils.updater import update_universities
+from utils.qdrant_processor import qdrant_processor
 
 
 load_dotenv()
@@ -23,14 +24,19 @@ sonar_model = ChatPerplexity(
 
 # Инициализация Llama из YandexCloud
 sdk = YCloudML(
-        folder_id=yandex_folder_id,
-        auth=yandex_api_key,
-    )
-
+    folder_id=yandex_folder_id,
+    auth=yandex_api_key,
+)
 llama_model = sdk.models.completions("llama").configure(
     temperature=0.5,
     max_tokens=2000,
 ).langchain(model_type="chat")
+
+# Инициализация Qdrant
+qdrant = qdrant_processor.QdrantProcessor()
+
+# Создание таблицы для хранения университетов
+universities_manager.create_universitites_table()
 
 # Форматирование ответа от LLM
 def format_response(response):
@@ -113,6 +119,7 @@ def llm_agent(question):
         if len(universities) == 1:
             university = universities[0]
             universities_list = universities_manager.get_universities()
+            print(university)
             request = [{
                 'role': 'user',
                 'content': 
@@ -126,18 +133,26 @@ def llm_agent(question):
             # В случае отсутствия университета в списке, он добавляется туда
             if answer.find('false') != -1:
                 update_universities.update_universitites(university)
-            reply = university + ' ' + answer
-            ### следующий шаг (или если вуз уже есть), то берем контекст оттуда вставляем его в промпт (надо поменять промпт)
-        # Если вуза два или более, то запуск модели
-        else:
-            reply = reply = universities.__str__()
-            '''response = sonar_model.invoke(
-                messages,
-                web_search_options={
-                    'search_context_size': 'high',
-                }
-            )
-            reply = format_response(response)'''
+            # Получение контекста из qdrant'а
+            context = qdrant.search(query=question, university=university, limit=8)
+            messages[-1] = {
+                "role": "user",
+                "content": f'''
+                    Отвечай на вопрос студента в соответствии с ранее заданными инструкциями. 
+                    Для ответа используй предоставленный контекст. Если в контексте не хватает информации, то ищи информацию в интернете.
+                    Контекст: {context}.
+                    Вопрос: {question}.
+                    '''
+            }
+        # Если вуза два или более, то происходит сразу выполнение запроса
+        # Если - один, то выполнение происходит после предобработки
+        response = sonar_model.invoke(
+            messages,
+            web_search_options={
+                'search_context_size': 'high',
+            }
+        )
+        reply = format_response(response)
 
     else:
         reply = "Не удалось определить категорию запроса."
