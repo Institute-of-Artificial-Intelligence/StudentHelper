@@ -31,9 +31,6 @@ llama_model = sdk.models.completions("llama").configure(
     max_tokens=2000,
 ).langchain(model_type="chat")
 
-# Создание таблицы в БД
-universities_manager.create_universitites_table()
-
 
 def format_response(response):
     '''Форматирование ответа от нейросети'''

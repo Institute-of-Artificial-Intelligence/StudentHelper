@@ -1,96 +1,62 @@
-import sqlite3
+from supabase import create_client
+from dotenv import load_dotenv
+import os
 
-DB_PATH = 'assets/db.sqlite'
+TABLE_NAME = 'university_links'
 
+load_dotenv()
+url = os.getenv('SUPABASE_URL')
+key = os.getenv('SUPABASE_KEY')
 
-def create_universitites_table() -> None:
-    '''Создание таблицы с ссылками для университета'''
-
-    # Подключение к базе данных
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    # Создание таблицы, если она ещё не существует
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS university_links (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            university_name TEXT NOT NULL,
-            link_name TEXT NOT NULL,
-            link TEXT NOT NULL
-        )
-    ''')
-
-    # Сохраняем изменения и закрываем соединение
-    conn.commit()
-    conn.close()
-
+supabase = create_client(url, key)
 
 
 def insert_links(university_name: str, links_dict: dict) -> None:
     '''Вставка в БД полезных ссылок для определённого университета'''
 
-    # Подключение к базе данных
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    # Вставка данных из словаря
     for link_name, link in links_dict.items():
-        cursor.execute('''
-            INSERT INTO university_links (university_name, link_name, link)
-            VALUES (?, ?, ?)
-        ''', (university_name, link_name, link))
-
-    # Сохраняем изменения и закрываем соединение
-    conn.commit()
-    conn.close()
+        try:
+            response = (
+                supabase.table(TABLE_NAME)
+                .insert({'university_name': university_name, 'link_name': link_name, 'link': link})
+                .execute()
+            )
+            if not response.data:
+                print('Произошла ошибка при записи:', response.error)
+        except Exception as e:
+            print('Произошла ошибка при записи:', e)
 
 
 def get_links_by_university(university_name: str) -> dict:
     '''Получение полезных ссылок по названию университета'''
 
-    # Подключение к базе данных
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    # Получение ссылок по названию университета
-    cursor.execute('''
-        SELECT link_name, link FROM university_links
-        WHERE university_name = ?
-    ''', (university_name,))
-    
-    # Преобразование результата в словарь
-    rows = cursor.fetchall()
-    links_dict = {link_name: link for link_name, link in rows}
-
-    # Закрытие соединения
-    conn.close()
-
-    return links_dict
+    try:
+        command = (
+            supabase.table(TABLE_NAME)
+            .select('link_name', 'link')
+            .eq('university_name', university_name)
+        )
+        response = command.execute()
+        return response.data if response.data else []
+    except Exception as e:
+        print('Возникла ошибка при чтении:', e)
+        return []
 
 
 def get_universities() -> list:
     '''Получение списка университетов из базы данных'''
 
-    # Подключение к базе данных
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    # Запрос на получение уникальных значений столбца
-    query = f"SELECT DISTINCT university_name FROM university_links"
-    cursor.execute(query)
-    # Получение всех результатов
-    results = cursor.fetchall()
-    
-    # Извлечение значений из кортежей
-    return [row[0] for row in results if row[0] is not None]
+    try:
+        command = (
+            supabase.table(TABLE_NAME)
+            .select('university_name')
+        )
+        response = command.execute()
+        return list(set(item['column_name'] for item in response.data)) if response.data else []
+    except Exception as e:
+        print('Возникла ошибка при чтении:', e)
+        return []
 
 
 if __name__ == '__main__':
-    links = {
-        'link1': 'me.tg',
-        'link2': 'he.org',
-        'link3': 'she.name'
-    }
-    create_universitites_table()
-    insert_links('МГУ', links)
-    print(get_links_by_university('Санкт-Петербургский государственный университет им. В.И. Ленина (Ульянова)'))
+    print(get_links_by_university('Санкт-Петербургский политехнический университет Петра Великого'))

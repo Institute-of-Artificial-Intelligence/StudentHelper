@@ -35,9 +35,6 @@ llama_model = sdk.models.completions("llama").configure(
 # Инициализация Qdrant
 qdrant = qdrant_processor.QdrantProcessor()
 
-# Создание таблицы для хранения университетов
-universities_manager.create_universitites_table()
-
 # Форматирование ответа от LLM
 def format_response(response):
     text = response.content if hasattr(response, "content") else str(response)
@@ -59,8 +56,8 @@ def determine_universities(history: list, question: str) -> list:
     messages = history + [{
         'role': 'user',
         'content': 
-        f'''Тебе требуется определить полное название всех университетов, упоминаемых в запросе.
-        Суть: определи все университеты находящиеся в запросе.
+        f'''Тебе требуется определить полное официальное название всех университетов, упоминаемых в запросе.
+        Суть: определи настоящие названия всех университетов находящихся в запросе.
         Формат: ответ должен быть в виде списка университетов, упоминаемых в запросе. Каждое название университета должно быть с новой строки. Если запрос не затрагивает никаких университетов, то нужно вывести всего одну строку "Нет университетов".
         - Важно: ответ должен содержать только список университетов или строку "Нет университетов".
         Полнота: стремись определить полные названия университетов, которые используются официально.
@@ -115,11 +112,11 @@ def llm_agent(question):
         if len(short_messages_history) > 3:
             short_messages_history = short_messages_history[-3:]
         universities = determine_universities(short_messages_history, question)
+        print(universities)
         # Если упоминается всего один университет в запрсое
         if len(universities) == 1:
             university = universities[0]
             universities_list = universities_manager.get_universities()
-            print(university)
             request = [{
                 'role': 'user',
                 'content': 
