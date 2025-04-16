@@ -2,6 +2,7 @@
 import os
 import time
 import hashlib
+import re
 from dotenv import load_dotenv
 from langchain_community.embeddings.yandex import YandexGPTEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
@@ -112,10 +113,18 @@ class QdrantProcessor:
         else:
             print("Нет новых данных для загрузки.")
 
-    def search(self, query: str, university: str = None, limit: int = 1):
-        """Выполняет поиск по эмбеддингу запроса, опционально фильтруя по вузу."""
+    @staticmethod
+    def keyword_score(text: str, query: str) -> float:
+        """Простейшая оценка совпадения по ключевым словам: частота вхождения."""
+        query = query.lower()
+        text = text.lower()
+        return len(re.findall(re.escape(query), text))  
+
+    def search(self, query: str, university: str = None, limit: int = 1, rerank_limit: int = 20):
+        """Гибридный поиск: семантический + ключевые слова с rerank."""
         vector = self.embeddings.embed_documents([query])[0]
 
+        # Фильтры по метаданным
         filters = []
         if university:
             filters.append(FieldCondition(
@@ -123,14 +132,23 @@ class QdrantProcessor:
                 match=MatchValue(value=university)
             ))
 
+        # Выполняем семантический поиск с запасом (например, 20 кандидатов)
         result = self.qdrant.search(
             collection_name=self.collection_name,
             query_vector=vector,
-            limit=limit,
-            query_filter=Filter(must=filters) if filters else None
+            limit=rerank_limit,
+            query_filter=Filter(must=filters) if filters else None,
+            with_payload=True  # чтобы получить текст для rerank
         )
 
-        return result
+        # Реранк по наличию ключевых слов в исходном тексте
+        reranked = sorted(
+            result,
+            key=lambda r: self.keyword_score(r.payload.get('text', ''), query),
+            reverse=True
+        )
+
+        return reranked[:limit]
 
 
 if __name__ == '__main__':
