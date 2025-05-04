@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from llm_agent import llm_agent, load_chat_history, update_chat_history
+from llm_agent import llm_agent, create_chat_history
+from utils.database import chat_manager
 
 app = Flask(__name__)
 CORS(app)
 
-chat_history = load_chat_history()
+messages_history = chat_manager.get_messages()
+chat_history = create_chat_history(messages_history)
 
 @app.route("/send_message", methods=["POST"])
 def send_message():
@@ -14,8 +16,7 @@ def send_message():
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
 
-    bot_response = llm_agent(user_message, chat_history)
-    update_chat_history(chat_history, user_message, bot_response)
+    bot_response = llm_agent(chat_history, user_message)
 
     response_data = {
         "response": bot_response,
