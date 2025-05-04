@@ -11,14 +11,16 @@ from utils.updater import update_universities
 from utils.qdrant_processor import qdrant_processor
 
 
+MAX_MESSAGES_SIZE = 3
+
 load_dotenv()
-perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
-yandex_folder_id = os.getenv("YANDEX_FOLDER_ID")
-yandex_api_key = os.getenv("YANDEX_API_KEY")
+perplexity_api_key = os.getenv('PERPLEXITY_API_KEY')
+yandex_folder_id = os.getenv('YANDEX_FOLDER_ID')
+yandex_api_key = os.getenv('YANDEX_API_KEY')
 
 # Инициализация Sonar из Perplexity
 sonar_model = ChatPerplexity(
-    model="sonar-reasoning",
+    model='sonar-reasoning',
     temperature=0.5,
     api_key=perplexity_api_key
 )
@@ -28,10 +30,10 @@ sdk = YCloudML(
     folder_id=yandex_folder_id,
     auth=yandex_api_key,
 )
-llama_model = sdk.models.completions("llama").configure(
+llama_model = sdk.models.completions('llama').configure(
     temperature=0.5,
     max_tokens=2000,
-).langchain(model_type="chat")
+).langchain(model_type='chat')
 
 # Инициализация Qdrant
 qdrant = qdrant_processor.QdrantProcessor()
@@ -39,19 +41,18 @@ qdrant = qdrant_processor.QdrantProcessor()
 
 def format_response(response):
     '''Простое форматирование ответа от LLM'''
-    text = response.content if hasattr(response, "content") else str(response)
-    text = text.replace("###", "")
+    text = response.content if hasattr(response, 'content') else str(response)
+    text = text.replace('###', '')
     text = re.sub(r'\[\d+\]', '', text)
-    return f"{text.strip()}"
+    return f'{text.strip()}'
 
 
-messages = []
 def create_chat_history(history: list) -> None:
     '''Создание в переменной истории чата по переданным сообщениям'''
-    global messages
-    messages.append({"role": "system", "content": "Нет"})
+    messages = [{'role': 'system', 'content': 'Общайся с пользователем'}]
     for entry in history:
-        messages.append({"role": entry["author"], "content": entry["text"]})
+        messages.append({'role': entry['author'], 'content': entry['text']})
+    return messages
 
 
 def determine_universities(history: list, question: str) -> list:
@@ -67,11 +68,20 @@ def determine_universities(history: list, question: str) -> list:
     return universities_list
 
 
-def llm_agent(question: str) -> str:
-    '''LLM агент, выдающий ответ на вопрос с учётом истории чата'''
-    global messages
+def llm_agent(messages: list, question: str) -> str:
+    '''
+    LLM агент, выдающий ответ на вопрос с учётом истории чата.\n
+    Принимает на вход сообщения в формате подходящем языковой модели
+    (первым должно быть системное сообщение) и вопрос.\n
+    Возвращает ответ на вопрос.
+    '''
     category = llm_decider(question)
 
+    while len(messages) > 1 + MAX_MESSAGES_SIZE * 2:
+        # Удаление самых ранних сообщений пользователь-модель
+        messages.pop(1)
+        messages.pop(1)
+    print(messages)
     # Добавление сообщения пользователя в историю чата
     messages.append({'role': 'user', 'content': question})
     
@@ -88,11 +98,7 @@ def llm_agent(question: str) -> str:
 
     elif category == 'Легальный, связан с получением информации про получение образования':
         messages[0] = {'role': 'system', 'content': SYSTEM_MAIN_MESSAGE}
-        # Получение списка университетов из запроса
-        short_messages_history = messages[1:-1]
-        if len(short_messages_history) > 3:
-            short_messages_history = short_messages_history[-3:]
-        universities = determine_universities(short_messages_history, question)
+        universities = determine_universities(messages[1:-1], question)
         print(universities)
         # Если упоминается всего один университет в запрсое
         if len(universities) == 1:
@@ -108,8 +114,8 @@ def llm_agent(question: str) -> str:
             # Получение контекста из qdrant'а
             context = qdrant.search(query=question, university=university, limit=8)
             messages[-1] = {
-                "role": "user",
-                "content": f'''
+                'role': 'user',
+                'content': f'''
                     Отвечай на вопрос студента в соответствии с ранее заданными инструкциями. 
                     Для ответа используй предоставленный контекст. Если в контексте не хватает информации, то ищи информацию в интернете.
                     Контекст: {context}.
@@ -129,11 +135,11 @@ def llm_agent(question: str) -> str:
     else:
         reply = ANSWER_UNKNOWN_MESSAGE
 
-    # Сохранение вопроса в историю чата
+    # Сохранение в историю чата
+    reply_to_save = re.sub(r'<think>.*?</think>', '', reply, count=1, flags=re.DOTALL)
     chat_manager.add_message('user', question)
-    # Сохранение ответа в историю чата
-    chat_manager.add_message('assistant', reply)
-    messages.append({'role': 'assistant', 'content': reply})
+    chat_manager.add_message('assistant', reply_to_save)
+    messages.append({'role': 'assistant', 'content': reply_to_save})
 
     return reply
 
@@ -141,11 +147,10 @@ def llm_agent(question: str) -> str:
 # Основной цикл
 if __name__ == '__main__':
     chat_history = chat_manager.get_messages()
-    create_chat_history(chat_history)
-
+    messages = create_chat_history(chat_history)
     while True:
         question = input("Введите ваш вопрос (или 'выход' для завершения): ")
         if question.lower() in ("выход", "exit", "quit", ""):
             print("Пока")
             break
-        print("Ответ агента:", llm_agent(question))
+        print("Ответ агента:", llm_agent(messages, question))
