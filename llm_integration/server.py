@@ -7,8 +7,8 @@ from utils.database import chat_manager
 app = Flask(__name__)
 CORS(app)
 
-messages_history = chat_manager.get_messages()
-chat_history = create_chat_history(messages_history)
+chat_history = chat_manager.get_messages()
+messages = create_chat_history(chat_history)
 
 @app.route("/send_message", methods=["POST"])
 def send_message():
@@ -17,7 +17,7 @@ def send_message():
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
 
-    bot_response = llm_agent(chat_history, user_message)
+    bot_response = llm_agent(messages, user_message)
 
     response_data = {
         "response": bot_response,

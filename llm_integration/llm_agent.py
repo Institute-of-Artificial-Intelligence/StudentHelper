@@ -112,6 +112,13 @@ def llm_agent(messages: list, question: str) -> str:
             if answer.find('false') != -1:
                 update_universities.update_universitites(university)
         # Если упоминается всего один университет в запрсое, то происходит получение контекста
+
+        # --- todo: улучшить работу с Qdrant ---
+        # Придумать что-нибудь для работы с учётом истории сообщений
+        #     например, вопрос "сравни их" для сравнения двух университетов из двух предыдущих сообщений
+        # Реализовать обработку случая, когда в хранилище недостаточно информации
+        #     информации достаточно -> генерируем ответ
+        #     информации мало -> выполняем поиск дополнительной информации в интернете
         if len(universities_request) == 1:
             university = universities_request[0]
             context = qdrant.search(query=question, university=university, limit=8)
@@ -119,12 +126,12 @@ def llm_agent(messages: list, question: str) -> str:
                 'role': 'user',
                 'content': CONTEXT_ANSWER_MESSAGE(context, question)
             }
+        # ---  ---
+        
         # Выполнение запроса
         response = sonar_model.invoke(
             messages,
-            web_search_options={
-                'search_context_size': 'high',
-            }
+            web_search_options={'search_context_size': 'high'}
         )
         reply = format_response(response)
 
@@ -145,8 +152,8 @@ if __name__ == '__main__':
     chat_history = chat_manager.get_messages()
     messages = create_chat_history(chat_history)
     while True:
-        question = input("Введите ваш вопрос (или 'выход' для завершения): ")
-        if question.lower() in ("выход", "exit", "quit", ""):
-            print("Пока")
+        question = input('Введите ваш вопрос (или \'выход\' для завершения): ')
+        if question.lower() in ('выход', 'exit', 'quit', ''):
+            print('Пока')
             break
-        print("Ответ агента:", llm_agent(messages, question))
+        print('Ответ агента:', llm_agent(messages, question))
