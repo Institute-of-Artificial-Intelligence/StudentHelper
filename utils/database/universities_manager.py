@@ -52,7 +52,7 @@ def get_universities() -> list:
             .select('university_name')
         )
         response = command.execute()
-        return list(set(item['column_name'] for item in response.data)) if response.data else []
+        return list(set(item['university_name'] for item in response.data)) if response.data else []
     except Exception as e:
         print('Возникла ошибка при чтении:', e)
         return []

@@ -81,7 +81,6 @@ def llm_agent(messages: list, question: str) -> str:
         # Удаление самых ранних сообщений пользователь-модель
         messages.pop(1)
         messages.pop(1)
-    print(messages)
     # Добавление сообщения пользователя в историю чата
     messages.append({'role': 'user', 'content': question})
     
@@ -98,32 +97,29 @@ def llm_agent(messages: list, question: str) -> str:
 
     elif category == 'Легальный, связан с получением информации про получение образования':
         messages[0] = {'role': 'system', 'content': SYSTEM_MAIN_MESSAGE}
-        universities = determine_universities(messages[1:-1], question)
-        print(universities)
-        # Если упоминается всего один университет в запрсое
-        if len(universities) == 1:
-            university = universities[0]
-            universities_list = universities_manager.get_universities()
+        # Проверка наличия и добавление университетов из запроса в БД в случае отсутствия
+        universities_request = determine_universities(messages[1:-1], question)
+        universities_list = universities_manager.get_universities()
+        print(
+            'Список упоминаемых в вопросе университетов:', universities_request,
+            '\nСписок университетов с хранящейся в БД информацией:', universities_list
+        )
+        for university in universities_request:
             answer = format_response(llama_model.invoke([{
                 'role': 'user',
                 'content': CHECK_UNIVERSITY_MESSAGE(university, universities_list)
             }]))
-            # В случае отсутствия университета в списке, он добавляется туда
             if answer.find('false') != -1:
                 update_universities.update_universitites(university)
-            # Получение контекста из qdrant'а
+        # Если упоминается всего один университет в запрсое, то происходит получение контекста
+        if len(universities_request) == 1:
+            university = universities_request[0]
             context = qdrant.search(query=question, university=university, limit=8)
             messages[-1] = {
                 'role': 'user',
-                'content': f'''
-                    Отвечай на вопрос студента в соответствии с ранее заданными инструкциями. 
-                    Для ответа используй предоставленный контекст. Если в контексте не хватает информации, то ищи информацию в интернете.
-                    Контекст: {context}.
-                    Вопрос: {question}.
-                    '''
+                'content': CONTEXT_ANSWER_MESSAGE(context, question)
             }
-        # Если вуза два или более, то происходит сразу выполнение запроса
-        # Если - один, то выполнение происходит после предобработки
+        # Выполнение запроса
         response = sonar_model.invoke(
             messages,
             web_search_options={
