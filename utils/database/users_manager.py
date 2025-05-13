@@ -23,8 +23,15 @@ def set_subscribe(user_id: str, subscribe_start: datetime, subscribe_end: dateti
         
         return response.data
     except Exception as e:
-        print(f"Ошибка во время вноса данных о подписке: {e}")
+        print(f'db_users/set_subscribe> Ошибка во время вноса данных о подписке: {e}')
         return None
+
+
+def set_new_subscribe(user_id: str, **kwargs):
+    '''Установка подписки пользователю с текущего момента на определённый срок'''
+    current_date = datetime.now()
+    end_date = datetime.now() + timedelta(**kwargs)
+    return set_subscribe(user_id, current_date, end_date)
 
 
 def update_expired_subscriptions():
@@ -39,7 +46,7 @@ def update_expired_subscriptions():
         
         return response.data
     except Exception as e:
-        print(f"Ошибка при обновлении: {e}")
+        print(f'db_users/update_expired_subscriptions> Ошибка при обновлении: {e}')
         return None
 
 
