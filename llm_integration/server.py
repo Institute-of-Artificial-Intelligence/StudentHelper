@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from llm_integration.llm_agent import llm_agent, create_chat_history
 from llm_integration.payment import check_payment
-from utils.database import chat_manager, users_manager
+from utils.database import chat_manager, users_manager, orders_manager
 from time import sleep
 import threading
 
@@ -31,38 +31,41 @@ def send_message():
     return jsonify(response_data)
 
 
+@app.route('/api/orders/', methods=['POST'])
+def create_order():
+    data = request.json
+    id = data.get('id')
+    order_id = data.get('order_id')
+
+    if id and order_id:
+        orders_manager.create_order(id, order_id)
+        return 'OK'
+
+    return jsonify({'error': 'Bad data'}), 400
+
+
 @app.route('/api/payments/', methods=['POST'])
 def notigication_payment():
     data = request.json
 
     result = check_payment(data)
+
     print('---server/notification_payment---', data, '-----', result, '-----', sep='\n')
 
     result['tocken'] = True
     # В запросе передан некорректный токен
-    if not result['tocken']:
+    if not result['tocken'] or not result['order_status']:
         return jsonify({'error': 'Bad tocken'}), 400
+    
+    orders_manager.update_order_status(**result['order_status'])
+    user_id = orders_manager.get_user_by_order(result['order_status']['order_id'])
+
     # Если оплата прошла успешно
     if result['confirmed']:
         # Разобраться с идентификацей пользователя по номеру заказа
-        users_manager.set_new_subscribe('', minutes=5)
+        users_manager.set_new_subscribe(user_id, minutes=5)
 
     return 'OK'
-
-    '''amount = data.get('Amount')
-    if result['tocken'] and result['confirmed']:
-        print(f'Прошла успешно оплата заказа номер {data.get('OrderId')} на сумму {amount // 100}.{amount % 100}')
-    elif result['confirmed']:
-        print('Некорректная подпись уведомления')
-    elif result['tocken']:
-        print(
-            f'----- Статус заказа не является подтверждением платежа -----',
-            f'Номер заказа: {data.get('OrderId')}',
-            f'Статус заказа: {data.get('Status')}',
-            f'Успешность прохождения запроса: {data.get('Success')}',
-            f'Код и описание ошибки: {data.get('ErrorCode')} - {data.get('Details')}',
-            f'Сумма заказа: {amount // 100}.{amount % 100}',
-            sep='\n')'''
 
 
 def subscribes_checker():

@@ -30,6 +30,16 @@ def confirmed_check(data: dict) -> bool:
     )
 
 
+def order_status_getter(data: dict) -> dict:
+    '''Проверка присутствия информации о заказе и её получение'''
+    order_id = data.get('OrderId')
+    status = data.get('Status')
+    return {
+        'order_id': order_id,
+        'status': status
+    } if status is not None and order_id is not None else None
+
+
 def check_payment(data: dict) -> dict:
     '''
     Проверка успешности проведения платежа в уведомлении от Т-Банка.\n
@@ -38,5 +48,6 @@ def check_payment(data: dict) -> dict:
     '''
     return {
         'tocken': tocken_check(data),
-        'confirmed': confirmed_check(data)
+        'confirmed': confirmed_check(data),
+        'order_status': order_status_getter(data)
     }
