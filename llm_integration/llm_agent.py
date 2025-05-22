@@ -6,9 +6,7 @@ from yandex_cloud_ml_sdk import YCloudML
 
 from llm_integration.llm_decider import llm_decider
 from llm_integration.llm_text_messages import *
-from utils.database import chat_manager, universities_manager
-from utils.updater import update_universities
-from utils.qdrant_processor import qdrant_processor
+from utils.database import chat_manager
 
 
 MAX_MESSAGES_SIZE = 3
@@ -35,9 +33,6 @@ llama_model = sdk.models.completions('llama').configure(
     max_tokens=2000,
 ).langchain(model_type='chat')
 
-# Инициализация Qdrant
-qdrant = qdrant_processor.QdrantProcessor()
-
 
 def format_response(response):
     '''Простое форматирование ответа от LLM'''
@@ -53,19 +48,6 @@ def create_chat_history(history: list) -> None:
     for entry in history:
         messages.append({'role': entry['author'], 'content': entry['text']})
     return messages
-
-
-def determine_universities(history: list, question: str) -> list:
-    '''Определение упоминаемых в запросе университетов с учётом истории чата'''
-    messages = history + [{
-        'role': 'user',
-        'content': DETERMINE_UNIVERSITIES_MESSAGE(question)
-    }]
-    answer = format_response(llama_model.invoke(messages))
-    universities_list = []
-    if 'Нет университетов' not in answer:
-        universities_list = answer.split('\n')
-    return universities_list
 
 
 def llm_agent(messages: list, question: str) -> str:
@@ -97,41 +79,11 @@ def llm_agent(messages: list, question: str) -> str:
 
     elif category == 'Легальный, связан с получением информации про получение образования':
         messages[0] = {'role': 'system', 'content': SYSTEM_MAIN_MESSAGE}
-        # Проверка наличия и добавление университетов из запроса в БД в случае отсутствия
-        universities_request = determine_universities(messages[1:-1], question)
-        universities_list = universities_manager.get_universities()
-        print(
-            'Список упоминаемых в вопросе университетов:', universities_request,
-            '\nСписок университетов с хранящейся в БД информацией:', universities_list
-        )
-        for university in universities_request:
-            answer = format_response(llama_model.invoke([{
-                'role': 'user',
-                'content': CHECK_UNIVERSITY_MESSAGE(university, universities_list)
-            }]))
-            if answer.find('false') != -1:
-                update_universities.update_universitites(university)
-        # Если упоминается всего один университет в запрсое, то происходит получение контекста
-
-        # --- todo: улучшить работу с Qdrant ---
-        # Придумать что-нибудь для работы с учётом истории сообщений
-        #     например, вопрос "сравни их" для сравнения двух университетов из двух предыдущих сообщений
-        # Реализовать обработку случая, когда в хранилище недостаточно информации
-        #     информации достаточно -> генерируем ответ
-        #     информации мало -> выполняем поиск дополнительной информации в интернете
-        if len(universities_request) == 1:
-            university = universities_request[0]
-            context = qdrant.search(query=question, university=university, limit=8)
-            messages[-1] = {
-                'role': 'user',
-                'content': CONTEXT_ANSWER_MESSAGE(context, question)
-            }
-        # ---  ---
-        
-        # Выполнение запроса
         response = sonar_model.invoke(
             messages,
-            web_search_options={'search_context_size': 'high'}
+            web_search_options={
+                'search_context_size': 'high'
+            }
         )
         reply = format_response(response)
 
