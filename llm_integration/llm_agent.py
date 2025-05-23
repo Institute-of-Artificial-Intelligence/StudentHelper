@@ -6,7 +6,6 @@ from yandex_cloud_ml_sdk import YCloudML
 
 from llm_integration.llm_decider import llm_decider
 from llm_integration.llm_text_messages import *
-from utils.database import chat_manager
 
 
 MAX_MESSAGES_SIZE = 3
@@ -35,36 +34,36 @@ llama_model = sdk.models.completions('llama').configure(
 
 
 def format_response(response):
-    '''Простое форматирование ответа от LLM'''
+    """Простое форматирование ответа от LLM"""
     text = response.content if hasattr(response, 'content') else str(response)
     text = text.replace('###', '')
     text = re.sub(r'\[\d+\]', '', text)
     return f'{text.strip()}'
 
 
-def create_chat_history(history: list) -> None:
-    '''Создание в переменной истории чата по переданным сообщениям'''
+def create_chat_history(history: list) -> list:
+    """Создание в переменной истории чата по переданным сообщениям"""
     messages = [{'role': 'system', 'content': 'Общайся с пользователем'}]
     for entry in history:
         messages.append({'role': entry['author'], 'content': entry['text']})
     return messages
 
 
-def llm_agent(messages: list, question: str) -> str:
-    '''
+def llm_agent(messages_history: list, question: str) -> str:
+    """
     LLM агент, выдающий ответ на вопрос с учётом истории чата.\n
     Принимает на вход сообщения в формате подходящем языковой модели
     (первым должно быть системное сообщение) и вопрос.\n
     Возвращает ответ на вопрос.
-    '''
+    """
     category = llm_decider(question)
 
-    while len(messages) > 1 + MAX_MESSAGES_SIZE * 2:
-        # Удаление самых ранних сообщений пользователь-модель
-        messages.pop(1)
-        messages.pop(1)
     # Добавление сообщения пользователя в историю чата
-    messages.append({'role': 'user', 'content': question})
+    messages = messages_history + [{'role': 'user', 'content': question}]
+    # Удаление самых ранних сообщений пользователь-модель
+    while len(messages) > 2 + MAX_MESSAGES_SIZE * 2:
+        messages.pop(1)
+        messages.pop(1)
     
     if category == 'Нелегальный, провокационный или связан с политикой':
         reply = ANSWER_ILLEGAL_MESSAGE
@@ -90,16 +89,10 @@ def llm_agent(messages: list, question: str) -> str:
     else:
         reply = ANSWER_UNKNOWN_MESSAGE
 
-    # Сохранение в историю чата
-    reply_to_save = re.sub(r'<think>.*?</think>', '', reply, count=1, flags=re.DOTALL)
-    chat_manager.add_message('user', question)
-    chat_manager.add_message('assistant', reply_to_save)
-    messages.append({'role': 'assistant', 'content': reply_to_save})
-
     return reply
 
 
-# Основной цикл
+'''
 if __name__ == '__main__':
     chat_history = chat_manager.get_messages()
     messages = create_chat_history(chat_history)
@@ -109,3 +102,4 @@ if __name__ == '__main__':
             print('Пока')
             break
         print('Ответ агента:', llm_agent(messages, question))
+'''

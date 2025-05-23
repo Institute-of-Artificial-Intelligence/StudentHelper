@@ -1,27 +1,40 @@
+import re
+import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from time import sleep
+
 from llm_integration.llm_agent import llm_agent, create_chat_history
 from llm_integration.payment import check_payment
 from utils.database import chat_manager, users_manager, orders_manager
-from time import sleep
-import threading
 
-UPDATE_SUBSRIPTIONS_TIME = 300 # seconds
+MAX_MESSAGES_SIZE = 3
+UPDATE_SUBSRIPTIONS_TIME = 300 # секунды
 
 app = Flask(__name__)
 CORS(app)
 
-chat_history = chat_manager.get_messages()
-messages = create_chat_history(chat_history)
 
 @app.route("/send_message", methods=["POST"])
 def send_message():
     data = request.json
+    user_id = data.get("user_id")
     user_message = data.get("message")
-    if not user_message:
-        return jsonify({"error": "No message provided"}), 400
-
+    if not user_message or not user_id:
+        return jsonify({"error": "No message or user_id provided"}), 400
+    
+    # Подготовка истории сообщений для запроса
+    chat_history = chat_manager.get_messages(user_id, MAX_MESSAGES_SIZE)
+    messages = create_chat_history(chat_history)
+    # Выполнение запроса
     bot_response = llm_agent(messages, user_message)
+    # Сохранение результата
+    chat_manager.add_message(user_id, 'user', user_message)
+    chat_manager.add_message(
+        user_id, 
+        'assistant', 
+        re.sub(r'<think>.*?</think>', '', bot_response, count=1, flags=re.DOTALL)
+    )
 
     response_data = {
         "response": bot_response,
