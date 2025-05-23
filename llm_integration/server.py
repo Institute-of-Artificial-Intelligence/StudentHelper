@@ -15,7 +15,7 @@ app = Flask(__name__)
 CORS(app)
 
 
-@app.route("/send_message", methods=["POST"])
+@app.route("/api/send_message", methods=["POST"])
 def send_message():
     data = request.json
     user_id = data.get("user_id")
