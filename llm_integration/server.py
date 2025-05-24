@@ -4,11 +4,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from time import sleep
 
-from llm_integration.llm_agent import llm_agent, create_chat_history
+from llm_integration.llm_agent import llm_agent
 from llm_integration.payment import check_payment
 from utils.database import chat_manager, users_manager, orders_manager
 
-MAX_MESSAGES_SIZE = 3
+MAX_MESSAGES_SIZE = 2
 UPDATE_SUBSRIPTIONS_TIME = 300 # секунды
 
 app = Flask(__name__)
@@ -23,9 +23,9 @@ def send_message():
     if not user_message or not user_id:
         return jsonify({"error": "No message or user_id provided"}), 400
     
-    # Подготовка истории сообщений для запроса
+    # Подготовка истории вопросов для запроса
     chat_history = chat_manager.get_messages(user_id, MAX_MESSAGES_SIZE)
-    messages = create_chat_history(chat_history)
+    messages = [{'role': message['author'], 'content': message['text']} for message in chat_history]
     # Выполнение запроса
     bot_response = llm_agent(messages, user_message)
     # Сохранение результата
