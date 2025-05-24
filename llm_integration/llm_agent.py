@@ -33,43 +33,43 @@ llama_model = sdk.models.completions('llama').configure(
 ).langchain(model_type='chat')
 
 
-def format_response(response):
-    """Простое форматирование ответа от LLM"""
+def format_response(response) -> str:
+    """
+    Простое форматирование ответа от LLM
+    
+    Args:
+        response: ответ от языковой модели определённой структуры
+    
+    Returns:
+        Строка с текстом ответа от языковой модели
+    """
     text = response.content if hasattr(response, 'content') else str(response)
     text = text.replace('###', '')
     text = re.sub(r'\[\d+\]', '', text)
     return f'{text.strip()}'
 
 
-def create_chat_history(history: list) -> list:
-    """Создание в переменной истории чата по переданным сообщениям"""
-    messages = [{'role': 'system', 'content': 'Общайся с пользователем'}]
-    for entry in history:
-        messages.append({'role': entry['author'], 'content': entry['text']})
-    return messages
-
-
-def llm_agent(messages_history: list, question: str) -> str:
+def llm_agent(questions_history: list, question: str) -> str:
     """
-    LLM агент, выдающий ответ на вопрос с учётом истории чата.\n
-    Принимает на вход сообщения в формате подходящем языковой модели
-    (первым должно быть системное сообщение) и вопрос.\n
-    Возвращает ответ на вопрос.
+    LLM агент, выдающий ответ на вопрос с учётом истории вопросов от пользователя.
+
+    Args:
+        questions_history: история вопросов, на которые пользователь уже получал ответ
+        question: вопрос, на который требуется получить ответ
+
+    Returns:
+        Строка с ответом на вопрос
     """
     category = llm_decider(question)
 
-    # Добавление сообщения пользователя в историю чата
-    messages = messages_history + [{'role': 'user', 'content': question}]
-    # Удаление самых ранних сообщений пользователь-модель
-    while len(messages) > 2 + MAX_MESSAGES_SIZE * 2:
-        messages.pop(1)
-        messages.pop(1)
-    
     if category == 'Нелегальный, провокационный или связан с политикой':
         reply = ANSWER_ILLEGAL_MESSAGE
 
     elif category == 'Легальный, обычное общение, не требует поиска в интернете':
-        messages[0] = {'role': 'system', 'content': SYSTEM_SIMPLE_MESSAGE}
+        messages = [
+            {'role': 'system', 'content': SYSTEM_SIMPLE_MESSAGE},
+            {'role': 'user', 'content': USER_SIMPLE_WRAPPER(questions_history, question)}
+        ]
         response = llama_model.invoke(messages)
         reply = format_response(response)
 
@@ -77,7 +77,10 @@ def llm_agent(messages_history: list, question: str) -> str:
         reply = ANSWER_NOT_UNIVERSITY_MESSAGE
 
     elif category == 'Легальный, связан с получением информации про получение образования':
-        messages[0] = {'role': 'system', 'content': SYSTEM_MAIN_MESSAGE}
+        messages = [
+            {'role': 'system', 'content': SYSTEM_MAIN_MESSAGE},
+            {'role': 'user', 'content': ''}
+        ]
         response = sonar_model.invoke(
             messages,
             web_search_options={

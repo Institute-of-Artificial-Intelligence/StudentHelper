@@ -23,11 +23,14 @@ def send_message():
     if not user_message or not user_id:
         return jsonify({"error": "No message or user_id provided"}), 400
     
-    # Подготовка истории сообщений для запроса
+    # Подготовка истории вопросов для запроса
     chat_history = chat_manager.get_messages(user_id, MAX_MESSAGES_SIZE)
-    messages = create_chat_history(chat_history)
+    questions_history = []
+    for message in chat_history:
+        if message['author'] == 'user':
+            questions_history.append(message['text'])
     # Выполнение запроса
-    bot_response = llm_agent(messages, user_message)
+    bot_response = llm_agent(questions_history, user_message)
     # Сохранение результата
     chat_manager.add_message(user_id, 'user', user_message)
     chat_manager.add_message(
