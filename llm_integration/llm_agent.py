@@ -85,7 +85,7 @@ def llm_agent(messages_history: list, question: str) -> str:
         questions_history = [message['content'] for message in filter(lambda x: x['role'] == 'user', messages_history)]
         contexts = qdrant.search(' '.join(questions_history + [question]))
         context = contexts[0] if len(contexts) > 0 else {'score': 0, 'text': ''}
-        print(f'llm_agent>  Вопросы от пользователя: {' | '.join(questions_history + [question])} (score: {context['score']})')
+        # print(f'llm_agent>  Вопросы от пользователя: {' | '.join(questions_history + [question])} (score: {context['score']})')
 
         if context['score'] >= 0.85:
             print(f'llm_agent>  Ответ пользователю с учётом контекста из Qdrant')
