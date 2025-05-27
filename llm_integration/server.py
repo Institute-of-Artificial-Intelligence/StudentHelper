@@ -12,7 +12,7 @@ MAX_MESSAGES_SIZE = 2
 UPDATE_SUBSRIPTIONS_TIME = 300 # секунды
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r'/*': {'origins': 'https://postupi.site/'}})
 
 
 @app.route("/api/send_message", methods=["POST"])
