@@ -13,8 +13,7 @@ load_dotenv()
 class QdrantProcessor:
     def __init__(self, collection_name="university_docs", vector_size=256):
         self.qdrant = QdrantClient(
-            url=os.getenv("QDRANT_URL"),
-            api_key=os.getenv("QDRANT_API_KEY")
+            url="http://qdrant:6333"
         )
         self.collection_name = collection_name
         self.embeddings = YandexGPTEmbeddings(
