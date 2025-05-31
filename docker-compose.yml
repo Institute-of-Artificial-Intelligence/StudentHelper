@@ -6,7 +6,7 @@ services:
       - "443:443"
     volumes:
       - './nginx.conf:/etc/nginx/nginx.conf'
-      - '/etc/letsencrypt:/etc/letsencrypt'
+      - '/etc/ssl:/etc/ssl'
     depends_on:
       - backend
       - frontend
@@ -17,7 +17,9 @@ services:
     build:
       context: ./backend
     env_file:
-      - ./backend/.env  # <-- путь к твоему .env файлу
+      - ./backend/.env
+    depends_on:
+      - qdrant
     networks:
       - dev
 
@@ -27,5 +29,17 @@ services:
     networks:
       - dev
 
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - dev
+
 networks:
   dev:
+
+volumes:
+  qdrant_data:
