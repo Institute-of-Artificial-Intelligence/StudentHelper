@@ -1,0 +1,203 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .chat-message {
+    @apply mb-4 rounded-xl max-w-[90%] sm:max-w-[80%];
+  }
+
+  .chat-message-bot {
+    @apply bg-slate-100 dark:bg-slate-800/95 text-slate-900 dark:text-white ml-0 mr-auto;
+  }
+
+  .chat-message-user {
+    @apply bg-slate-700 dark:bg-slate-700 text-white ml-auto mr-0;
+  }
+
+  .quick-reply-btn {
+    @apply px-4 py-2 bg-white border border-edu-secondary/30 text-edu-secondary rounded-full hover:bg-edu-secondary/10 transition-colors text-sm dark:bg-slate-700 dark:text-white dark:border-edu-secondary/50 whitespace-nowrap;
+  }
+
+  .typing-indicator {
+    @apply px-4 py-2 inline-flex;
+  }
+
+  .typing-dot {
+    @apply h-2 w-2 bg-edu-secondary/70 rounded-full mx-0.5 dark:bg-blue-400/70;
+    animation: typing-dot-pulse 1.5s infinite ease-in-out;
+  }
+
+  .typing-dot-1 {
+    animation-delay: 0s;
+  }
+
+  .typing-dot-2 {
+    animation-delay: 0.2s;
+  }
+
+  .typing-dot-3 {
+    animation-delay: 0.4s;
+  }
+
+  .typing-text {
+    @apply text-sm text-edu-dark/50 ml-2 dark:text-gray-300;
+  }
+
+  @keyframes typing-dot-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+  }
+  
+  /* List bullets styling like in the screenshot */
+  .chat-message ul {
+    @apply list-none pl-5 my-2;
+  }
+  
+  .chat-message ul li {
+    @apply relative pl-6 py-0.5;
+  }
+  
+  .chat-message ul li:before {
+    content: "•";
+    @apply absolute left-0 text-blue-500 dark:text-blue-400 text-xl;
+  }
+
+  /* Mobile viewport adjustments */
+  @media (max-width: 640px) {
+    .chat-message {
+      @apply max-w-[95%];
+    }
+    
+    .chat-message .p-4 {
+      @apply p-3;
+    }
+  }
+}
+
+/* Ensure tables are responsive on mobile */
+@media (max-width: 640px) {
+  .chat-message table {
+    @apply text-xs;
+  }
+  
+  .chat-message th, 
+  .chat-message td {
+    @apply px-2 py-1;
+  }
+}
+
+/* Enhance mobile viewport meta tag */
+@layer base {
+  @media (max-width: 640px) {
+    html, body {
+      @apply overscroll-none;
+      touch-action: manipulation;
+    }
+  }
+}
