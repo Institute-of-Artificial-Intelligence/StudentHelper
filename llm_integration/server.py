@@ -12,7 +12,8 @@ MAX_MESSAGES_SIZE = 2
 UPDATE_SUBSRIPTIONS_TIME = 300  # секунды
 
 app = Flask(__name__)
-CORS(app, resources={r'/*': {'origins': 'https://postupi.site/'}})
+CORS(app)
+
 
 @app.route("/api/send_message", methods=["POST"])
 def send_message():
@@ -30,6 +31,7 @@ def send_message():
 
     return jsonify({"response": bot_response, "quickReplies": []})
 
+
 @app.route('/api/orders/', methods=['POST'])
 def create_order():
     data = request.json
@@ -40,6 +42,7 @@ def create_order():
         orders_manager.create_order(id, order_id)
         return 'OK'
     return jsonify({'error': 'Bad data'}), 400
+
 
 @app.route('/api/payments/', methods=['POST'])
 def notigication_payment():
@@ -55,9 +58,10 @@ def notigication_payment():
     user_id = orders_manager.get_user_by_order(result['order_status']['order_id'])
 
     if result['confirmed']:
-        users_manager.set_new_subscribe(user_id, minutes=5)
+        users_manager.set_new_subscribe(user_id, days=30)
 
     return 'OK'
+
 
 @app.route("/api/profile/<int:vk_id>", methods=["GET"])
 def get_profile(vk_id):
@@ -68,6 +72,7 @@ def get_profile(vk_id):
         return jsonify({"error": "Профиль не найден"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/profile/<int:vk_id>", methods=["POST"])
 def update_profile(vk_id):
@@ -85,11 +90,13 @@ def update_profile(vk_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 def subscribes_checker():
     while True:
         users_manager.update_expired_subscriptions()
         print('server/subscribes_checker> Выполнена проверка истёкших подписок')
         sleep(UPDATE_SUBSRIPTIONS_TIME)
+
 
 if __name__ == "__main__":
     thread = threading.Thread(target=subscribes_checker, daemon=True)
