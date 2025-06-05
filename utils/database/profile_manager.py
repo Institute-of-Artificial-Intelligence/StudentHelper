@@ -21,26 +21,22 @@ def get_profile_by_vk_id(vk_id: int):
         print(f"get_profile_by_vk_id> Ошибка при получении профиля: {e}")
         return None
 
-def update_profile_by_vk_id(vk_id: int, phone=None, school=None, user_type=None):
+def update_profile_by_vk_id(vk_id: int, phone=None, school=None, user_type=None, name=None, referral_source=None):
     try:
-        fields = {}
-        if phone: fields["phone"] = phone
-        if school: fields["school"] = school
-        if user_type: fields["user_type"] = user_type
-
-        if not fields:
-            print("update_profile_by_vk_id> Нечего обновлять.")
-            return
-
-        response = supabase.table("profiles") \
-            .update(fields) \
-            .eq("vk_id", vk_id) \
-            .execute()
-        print("✅ Обновление успешно:", response.data)
-        return response.data
+        update_data = {
+            "phone": phone,
+            "school": school,
+            "user_type": user_type,
+            "name": name,
+            "referral_source": referral_source,
+            "updated_at": "now()"
+        }
+        update_data = {k: v for k, v in update_data.items() if v is not None}
+        response = supabase.table('profiles').update(update_data).eq('vk_id', vk_id).execute()
+        return response.data is not None
     except Exception as e:
-        print(f"update_profile_by_vk_id> Ошибка: {e}")
-        return None
+        print(f'update_profile_by_vk_id> Ошибка: {e}')
+        return False
 
 if __name__ == '__main__':
     vk_id = 234234234234
