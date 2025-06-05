@@ -26,8 +26,8 @@ def send_message():
     chat_history = chat_manager.get_messages(user_id, MAX_MESSAGES_SIZE)
     messages = [{'role': message['author'], 'content': message['text']} for message in chat_history]
     bot_response = llm_agent(messages, user_message)
-    chat_manager.add_message(user_id, 'user', user_message)
-    chat_manager.add_message(user_id, 'assistant', re.sub(r'<think>.*?</think>', '', bot_response, count=1, flags=re.DOTALL))
+    #chat_manager.add_message(user_id, 'user', user_message)
+    #chat_manager.add_message(user_id, 'assistant', re.sub(r'<think>.*?</think>', '', bot_response, count=1, flags=re.DOTALL))
 
     return jsonify({"response": bot_response, "quickReplies": []})
 

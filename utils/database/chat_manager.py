@@ -11,7 +11,7 @@ key = os.getenv('SUPABASE_KEY_PROFILES')
 supabase = create_client(url, key)
 
 
-def get_messages(user_id: str = None, limit: int = None) -> list:
+def get_messages(user_id: int = None, limit: int = None) -> list:
     """
     Получение истории чата с возможным ограничение по количеству сообщений
 
@@ -34,13 +34,13 @@ def get_messages(user_id: str = None, limit: int = None) -> list:
             query = query.limit(limit * 2)
 
         response = query.execute()
-        return reversed(response.data) if response.data else []
+        return list(reversed(response.data)) if response.data else []
     except Exception as e:
         print('database/chat_manager/get_messages>  Возникла ошибка при чтении:', e)
         return []
 
 
-def add_message(user_id: str, author: str, text: str) -> bool:
+def add_message(user_id: int, author: str, text: str) -> bool:
     """
     Сохранение сообщения в историю чата
 
@@ -69,4 +69,4 @@ def add_message(user_id: str, author: str, text: str) -> bool:
 
 
 if __name__ == '__main__':
-    print(get_messages())
+    print(get_messages(user_id=378430304))
