@@ -69,4 +69,4 @@ def add_message(user_id: int, author: str, text: str) -> bool:
 
 
 if __name__ == '__main__':
-    print(get_messages(user_id=378430304))
+    print(get_messages())
